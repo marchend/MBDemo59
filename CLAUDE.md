@@ -3,8 +3,7 @@
 ## Overview
 AcmeBank is an iOS 17+ banking app (Swift 5.10 / SwiftUI) that lets customers view
 accounts, review transactions, initiate transfers, and manage cards. Auth is handled via
-Okta OIDC. This repository is in **Day-1 bootstrap state** — the running shell exists;
-all feature work is in subsequent PRs.
+Okta OIDC. The login screen is implemented and is the first screen shown on launch.
 
 ## Tech Stack
 | Item | Value |
@@ -18,7 +17,8 @@ all feature work is in subsequent PRs.
 | Dependency Injection | Constructor injection (no service locator) |
 | Notifications | `NotificationCenter` with typed wrappers |
 | Project generation | XcodeGen (`project.yml`) |
-| Test framework | XCTest (unit) + XCUITest (critical flows) |
+| Test framework | XCTest (unit) + XCUITest (critical flows) + SnapshotTesting (views) |
+| Snapshot testing | `swift-snapshot-testing` 1.17+ (`pointfreeco/swift-snapshot-testing`) |
 | Min Xcode | 16.0 |
 | Bundle ID | `com.acmebank.mobile` |
 
@@ -44,11 +44,17 @@ xcodebuild test \
 ## Key Directory Structure
 ```
 AcmeBank/
-├── App/               # @main entry, ContentView (bootstrap), RootView, AppCoordinator
+├── App/               # @main entry (AcmeBankApp), ContentView (kept for compatibility)
 ├── Core/              # Auth, Networking, Notifications, Extensions
 ├── Domain/            # Models + Repository protocols (no implementations)
 ├── Data/              # Remote + Mock repository implementations
-├── Features/          # Login, Home, Accounts, Transfer, Cards (MVVM+Coordinator per feature)
+├── Features/          # Login (implemented), Home, Accounts, Transfer, Cards
+│   └── Login/
+│       ├── LoginViewModel.swift      # ObservableObject; form state + signIn()
+│       ├── LoginView.swift           # Root login screen — wired into AcmeBankApp
+│       └── Subviews/                 # OktaHeaderView, HexagonLogoView, etc.
+├── Shared/
+│   └── Extensions/    # Color+Hex.swift (Color(hex:) + Color.acmeNavy)
 ├── DesignSystem/      # Colors, Typography, Assets
 └── Resources/         # Assets.xcassets, PrivacyInfo.xcprivacy
 AcmeBankTests/         # XCTest unit tests (mirrors source tree)
@@ -57,11 +63,15 @@ project.yml            # XcodeGen spec — source of truth for the .xcodeproj
 setup.sh               # One-shot post-clone setup
 ```
 
+## Current App Launch Path
+`AcmeBankApp` → `LoginView` (initial scene content).
+The `onSignIn` closure is a no-op stub; real Okta auth wired in a future PR.
+
 ## Planned Architecture (from spec)
 
 ### MVVM + Coordinator
 - **View** — SwiftUI `View` struct; renders `@Published` state; zero business logic.
-- **ViewModel** — `final class: ObservableObject`; calls repositories; posts notifications. (deferred — future PR)
+- **ViewModel** — `final class: ObservableObject`; calls repositories; posts notifications.
 - **Coordinator** — `ObservableObject` owning `NavigationStack` path; drives push/present declaratively. (deferred — future PR)
 - **Repository protocols** in `Domain/`; concrete impls in `Data/`. (deferred — future PR)
 
@@ -88,8 +98,9 @@ AppCoordinator → LoginCoordinator | TabBarCoordinator
 `AppNotification` enum of typed `Notification.Name` constants; `NotificationPublisher`
 static helper. Root coordinator subscribes via Combine; ViewModels only post.
 
-### Design System (deferred — future PR)
-`Colors.swift` (acmeNavy, acmeBackground, …) and `Typography.swift` (acmeTitle, …).
+### Design System
+`Color.acmeNavy` is live in `AcmeBank/Shared/Extensions/Color+Hex.swift`.
+Full `Colors.swift` / `Typography.swift` tokens deferred to a future PR.
 
 ## Deferred Work
 - Okta OIDC authentication (AuthService, KeychainStore, UserSession, Okta.plist)
@@ -97,11 +108,10 @@ static helper. Root coordinator subscribes via Combine; ViewModels only post.
 - Networking layer (APIClient, APIRouter, APIError, RequestInterceptor)
 - Domain models (Account, Transaction, Customer, TransferRequest)
 - Repository protocols + Mock/Remote implementations
-- Login, Home, Accounts, Transfer, Cards features
-- Design system tokens (Colors, Typography)
+- Home, Accounts, Transfer, Cards features
+- Design system tokens (full Colors.swift, Typography.swift)
 - Internal notifications (AppNotification, NotificationPublisher)
 - SwiftLint configuration (.swiftlint.yml)
-- CI workflow (ios-build.yml with xcodebuild + swiftlint)
 - XCUITest flows (LoginUITests, TransferUITests)
 - Localization (Localizable.strings)
 - xcconfig API_BASE_URL injection
