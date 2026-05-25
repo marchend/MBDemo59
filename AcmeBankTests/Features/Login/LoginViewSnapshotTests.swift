@@ -11,19 +11,19 @@ import SnapshotTesting
 /// under `__Snapshots__/LoginViewSnapshotTests/`. Subsequent runs compare
 /// against those baselines and fail if the rendered output differs.
 ///
-/// **Baseline recording:** the global `SnapshotTesting.isRecording` flag is
-/// set to `true` for this initial PR because no baseline images exist yet.
-/// Once the first CI run records the reference images, flip it to `false`
-/// (and commit the generated PNGs) so that future PRs catch regressions.
+/// **Baseline recording:** `SnapshotTesting.isRecording` is set to `false`
+/// so that the library uses record-if-missing semantics: if no baseline PNG
+/// exists it records one and passes; if a baseline exists it compares and
+/// only fails on visual regression.
 final class LoginViewSnapshotTests: XCTestCase {
 
     // MARK: - Setup
 
     override func setUp() {
         super.setUp()
-        // Record mode: always write reference images on this run.
-        // Flip to `false` once baselines are committed.
-        isRecording = true
+        // Comparison mode: record a baseline only when one is missing,
+        // then compare against it on subsequent runs.
+        isRecording = false
     }
 
     // MARK: - LoginView — full screen
